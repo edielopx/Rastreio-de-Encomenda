@@ -1,0 +1,288 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <title>EPX Entregas Admin - Rastreamento de Entregas</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial, sans-serif;
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+            background-image: linear-gradient(135deg, #f0f0f0 0%, #ffffff 100%);
+            min-height: 100vh;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .logo span {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #8b0000;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        .logo i {
+            font-size: 3em;
+            color: #8b0000;
+            margin-right: 10px;
+        }
+        .container {
+            background-color: white;
+            border: 1px solid #8b0000;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #8b0000;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+            background-color: #f8f8f8;
+            padding: 20px;
+            border-radius: 5px;
+        }
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        input {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+        }
+        button {
+            padding: 10px 15px;
+            font-size: 16px;
+            background-color: #8b0000;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        button:hover {
+            background-color: #660000;
+        }
+        .status-buttons button {
+            margin: 5px;
+            font-size: 14px;
+        }
+        .delivery-list {
+            margin-top: 30px;
+        }
+        .delivery-item {
+            background-color: white;
+            border: 1px solid #ddd;
+            padding: 20px;
+            margin: 15px 0;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .delete-btn {
+            background-color: #ff0000;
+            float: right;
+        }
+        .delete-btn:hover {
+            background-color: #cc0000;
+        }
+        #loginForm {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #adminPanel {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-truck-fast"></i>
+            <span>EPX Entregas</span>
+        </div>
+
+        <div id="loginForm">
+            <h2>Login Administrativo</h2>
+            <div class="form-group">
+                <input type="text" id="username" placeholder="Usuário">
+                <input type="password" id="password" placeholder="Senha">
+                <button onclick="login()">Entrar</button>
+            </div>
+        </div>
+
+        <div id="adminPanel">
+            <h1>Administração de Entregas</h1>
+            <div class="form-group">
+                <h3>Cadastrar Nova Entrega</h3>
+                <div class="form-row">
+                    <input type="text" id="tracking_code" placeholder="Código de rastreio" readonly>
+                    <button onclick="generateTrackingCode()">Gerar Código</button>
+                </div>
+                <div class="form-row">
+                    <input type="text" id="package_name" placeholder="Nome do pacote">
+                    <input type="text" id="origin" placeholder="Cidade de origem">
+                    <input type="text" id="destination" placeholder="Cidade de destino">
+                    <button onclick="createDelivery()">Cadastrar</button>
+                </div>
+            </div>
+
+            <div class="delivery-list" id="deliveryList"></div>
+        </div>
+    </div>
+
+    <script>
+        // Credenciais fixas para exemplo (em produção deve-se usar backend)
+        const ADMIN_USER = "admin";
+        const ADMIN_PASS = "123456";
+
+        function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (username === ADMIN_USER && password === ADMIN_PASS) {
+                document.getElementById('loginForm').style.display = 'none';
+                document.getElementById('adminPanel').style.display = 'block';
+                loadDeliveries();
+            } else {
+                alert('Usuário ou senha incorretos!');
+            }
+        }
+
+        function generateTrackingCode() {
+            const digits = Array.from({length: 6}, () => Math.floor(Math.random() * 10)).join('');
+            document.getElementById('tracking_code').value = `E${digits}PX`;
+        }
+        
+        const STATUS_FLOW = [
+            "Pacote recebido pela transportadora",
+            "Pacote está a caminho",
+            "Pacote chegou na cidade destinada",
+            "Pacote em rota de entrega",
+            "Pacote entregue"
+        ];
+
+        async function createDelivery() {
+            const tracking_code = document.getElementById('tracking_code').value;
+            const package_name = document.getElementById('package_name').value;
+            const origin = document.getElementById('origin').value;
+            const destination = document.getElementById('destination').value;
+
+            try {
+                const response = await fetch('/deliveries/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        tracking_code,
+                        package_name,
+                        status: STATUS_FLOW[0],
+                        origin,
+                        destination
+                    }),
+                });
+
+                if (response.ok) {
+                    alert('Entrega cadastrada com sucesso!');
+                    loadDeliveries();
+                } else {
+                    alert('Erro ao cadastrar entrega');
+                }
+            } catch (error) {
+                alert('Erro ao cadastrar entrega');
+            }
+        }
+
+        async function updateStatus(tracking_code, status) {
+            try {
+                const response = await fetch(`/deliveries/${tracking_code}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        status
+                    }),
+                });
+
+                if (response.ok) {
+                    loadDeliveries();
+                }
+            } catch (error) {
+                alert('Erro ao atualizar status');
+            }
+        }
+
+        function createStatusButtons(delivery) {
+            let buttons = '';
+            STATUS_FLOW.forEach((status) => {
+                const isCurrentStatus = status === delivery.status;
+                const buttonStyle = isCurrentStatus ? 'background-color: #4CAF50;' : '';
+                buttons += `
+                    <button style="${buttonStyle}" onclick="updateStatus('${delivery.tracking_code}', '${status}')">
+                        ${status}
+                    </button>`;
+            });
+            return buttons;
+        }
+
+        async function loadDeliveries() {
+            try {
+                const response = await fetch('/deliveries');
+                const deliveries = await response.json();
+                
+                const deliveryList = document.getElementById('deliveryList');
+                deliveryList.innerHTML = '<h3>Entregas Cadastradas</h3>';
+                
+                deliveries.forEach(delivery => {
+                    deliveryList.innerHTML += `
+                        <div class="delivery-item">
+                            <button class="delete-btn" onclick="deleteDelivery('${delivery.tracking_code}')">Excluir</button>
+                            <p><strong>Código:</strong> ${delivery.tracking_code}</p>
+                            <p><strong>Pacote:</strong> ${delivery.package_name}</p>
+                            <p><strong>Status:</strong> ${delivery.status}</p>
+                            <p><strong>Origem:</strong> ${delivery.origin}</p>
+                            <p><strong>Destino:</strong> ${delivery.destination}</p>
+                            <div class="status-buttons">
+                                ${createStatusButtons(delivery)}
+                            </div>
+                        </div>
+                    `;
+                });
+            } catch (error) {
+                console.error('Erro ao carregar entregas:', error);
+            }
+        }
+
+        async function deleteDelivery(tracking_code) {
+            if (confirm('Tem certeza que deseja excluir esta entrega?')) {
+                try {
+                    const response = await fetch(`/deliveries/${tracking_code}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (response.ok) {
+                        alert('Entrega excluída com sucesso!');
+                        loadDeliveries();
+                    } else {
+                        alert('Erro ao excluir entrega');
+                    }
+                } catch (error) {
+                    alert('Erro ao excluir entrega');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

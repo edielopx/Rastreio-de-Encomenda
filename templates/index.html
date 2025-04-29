@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/styles.css">
+    <title>EPX Entregas - Rastreamento de Entregas</title>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <i class="fas fa-truck-fast"></i>
+            <span>EPX Entregas</span>
+        </div>
+        <h1>Rastreamento de Entregas</h1>
+        <div class="form-group">
+            <input type="text" id="tracking_code" placeholder="Digite o código de rastreio">
+            <button onclick="trackDelivery()">Rastrear</button>
+        </div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function trackDelivery() {
+            const tracking_code = document.getElementById('tracking_code').value;
+            const resultDiv = document.getElementById('result');
+
+            try {
+                const response = await fetch(`/deliveries/${tracking_code}`);
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = `
+                        <h3>Status da Entrega</h3>
+                        <p><strong>Código:</strong> ${data.tracking_code}</p>
+                        <p><strong>Status:</strong> ${data.status}</p>
+                        <p><strong>Origem:</strong> ${data.origin}</p>
+                        <p><strong>Destino:</strong> ${data.destination}</p>
+                        <p><strong>Previsão de Entrega:</strong> ${data.estimated_delivery || 'Não disponível'}</p>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<p style="color: red">${data.detail}</p>`;
+                }
+                resultDiv.style.display = 'block';
+            } catch (error) {
+                resultDiv.innerHTML = '<p style="color: red">Erro ao rastrear entrega</p>';
+                resultDiv.style.display = 'block';
+            }
+        }
+    </script>
+</body>
+</html>
